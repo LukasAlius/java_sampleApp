@@ -69,10 +69,14 @@ public class HomeController {
 	}
 	
 
-	@RequestMapping(value = "/IndividualsSummary")
+	@RequestMapping("/IndividualsSummary")
 	public ModelAndView individualsSummary() throws MalformedURLException, InterruptedException {
+		List<IndividualSummaryModel> message = populateData(rawJson);
 		ModelAndView modelAndView = new ModelAndView("IndividualsSummary");
-		modelAndView.addObject("IndividualSummaryModel", populateData(rawJson));
+
+
+
+		modelAndView.addObject("individualmodels", message);
 		return modelAndView;
 	}
 
@@ -194,6 +198,7 @@ public class HomeController {
 
 		List<IndividualSummaryModel> individuals = new ArrayList<>();
 
+		String html = "";
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
@@ -202,6 +207,8 @@ public class HomeController {
 			String name = jsonObject.get("Name").toString();
 			String emailAddress = jsonObject.get("EmailAddress").toString();
 			String userID = jsonObject.get("UserID").toString();
+			html = html + "<tr><td>"+reference+"</td><td>"+emailAddress+"</td><td>"+name+"</td><td>"+timestamp+"</td><td>"+userID+"</td></tr>";
+
 			IndividualSummaryModel individual = new IndividualSummaryModel(reference, timestamp, name, emailAddress, userID);
 			individuals.add(individual);
 		}
