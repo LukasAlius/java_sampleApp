@@ -21,8 +21,10 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,12 +81,15 @@ public class HomeController {
 		ModelAndView modelAndView = new ModelAndView("IndividualsSummary");
 
 		modelAndView.addObject("individualModel", populateIndividualsSummary(jsonIndividualsSummary));
+		modelAndView.addObject("setupdata", new SetupData());
 		return modelAndView;
 	}
 
-	@RequestMapping("/IndividualDetails")
-	public ModelAndView individualDetails() {
+	@RequestMapping(value = "/IndividualDetails", method = RequestMethod.POST)
+	public ModelAndView individualDetails(@ModelAttribute(value = "setupdata")SetupData data) {
 		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
+
+		data.getReference();
 
 		modelAndView.addObject("individualModel", populateIndividualDetails(jsonIndividualDetails));
 		return modelAndView;
