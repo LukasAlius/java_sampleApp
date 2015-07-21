@@ -13,12 +13,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.google.gson.*;
-import model.CredentialsModel;
-import model.IndividualSummaryModel;
-import model.TokenResult;
-import model.WidgetModel;
+import model.*;
 
-import net.minidev.json.JSONObject;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -33,10 +29,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.aad.adal4j.AuthenticationContext;
 import com.microsoft.aad.adal4j.ClientCredential;
 
+import javax.swing.text.BadLocationException;
+
 @Controller
 public class HomeController {
 
-	private String rawJson;
+	private String summaryURL = "https://api-beta.direct.id:444/v1/individuals";
+	private String detailsURL = "https://api-beta.direct.id:444/v1/individual/";
+	private String jsonIndividualDetails;
+	private String jsonIndividualsSummary;
+
+	private String reference = "5388f1dd436e46698007b79650679023";
 
 	/**
 	 * The default index controller, creates a new model to pass to the view
@@ -60,23 +63,30 @@ public class HomeController {
 	public ModelAndView connect(CredentialsModel form) throws Exception {
 		trimFormDetails(form);
 
-		rawJson = getJson(form, "https://api-beta.direct.id:444/v1/individuals");
+		jsonIndividualsSummary = getJson(form, summaryURL);
+		jsonIndividualDetails = getJson(form, detailsURL + reference);
 
 		String token = acquireUserSessionToken(new DefaultHttpClient(), form.getApi(), acquireOAuthAccessToken(form.getClientId(), form.getSecretKey(), form.getResourceId(), form.getAuthority()));
+
 		ModelAndView modelAndView = new ModelAndView("Widget");
 		modelAndView.addObject("widgetmodel", new WidgetModel(form.getFullCDNPath(), token));
 		return modelAndView;
 	}
-	
+
 
 	@RequestMapping("/IndividualsSummary")
-	public ModelAndView individualsSummary() throws MalformedURLException, InterruptedException {
-		List<IndividualSummaryModel> message = populateData(rawJson);
+	public ModelAndView individualsSummary() {
 		ModelAndView modelAndView = new ModelAndView("IndividualsSummary");
 
+		modelAndView.addObject("individualModel", populateIndividualsSummary(jsonIndividualsSummary));
+		return modelAndView;
+	}
 
+	@RequestMapping("/IndividualDetails")
+	public ModelAndView individualDetails() {
+		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
 
-		modelAndView.addObject("individualmodels", message);
+		modelAndView.addObject("individualModel", populateIndividualDetails(jsonIndividualDetails));
 		return modelAndView;
 	}
 
@@ -156,7 +166,7 @@ public class HomeController {
 	 * @throws JsonMappingException
 	 * @throws ClientProtocolException
 	 */
-	private String extractTokenFromResponse(InputStream stream) throws IOException, JsonParseException, JsonMappingException, ClientProtocolException {
+	private String extractTokenFromResponse(InputStream stream) throws IOException, JsonParseException {
 		ObjectMapper mapper = new ObjectMapper();
 		TokenResult result = mapper.readValue(stream, TokenResult.class);
 		return result.getToken();
@@ -164,8 +174,6 @@ public class HomeController {
 
 	private String getJson(CredentialsModel credentials, String urlString) throws Exception {
 		String authenticationToken = acquireOAuthAccessToken(credentials.getClientId(), credentials.getSecretKey(), credentials.getResourceId(), credentials.getAuthority());
-		BufferedReader reader = null;
-		//String rawJson = readUrl(url, authenticationToken);
 
 		try {
 			URL url = new URL(urlString);
@@ -191,14 +199,13 @@ public class HomeController {
 	/**
 	* Parsing JSON file into a IndividualsSummary class using gson
 	*/
-	private List<IndividualSummaryModel> populateData(String json) {
+	private List<IndividualSummaryModel> populateIndividualsSummary(String json) {
 		JsonElement jsonElement = new JsonParser().parse(json);
 		JsonObject jsonObject = jsonElement.getAsJsonObject();
 		JsonArray jsonArray = jsonObject.getAsJsonArray("Individuals");
 
 		List<IndividualSummaryModel> individuals = new ArrayList<>();
 
-		String html = "";
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
@@ -207,12 +214,58 @@ public class HomeController {
 			String name = jsonObject.get("Name").toString();
 			String emailAddress = jsonObject.get("EmailAddress").toString();
 			String userID = jsonObject.get("UserID").toString();
-			html = html + "<tr><td>"+reference+"</td><td>"+emailAddress+"</td><td>"+name+"</td><td>"+timestamp+"</td><td>"+userID+"</td></tr>";
 
 			IndividualSummaryModel individual = new IndividualSummaryModel(reference, timestamp, name, emailAddress, userID);
 			individuals.add(individual);
 		}
 
 		return individuals;
+	}
+
+	private IndividualDetailsModel populateIndividualDetails(String json) {
+		JsonElement jsonElement = new JsonParser().parse(json);
+		JsonObject jsonObject = jsonElement.getAsJsonObject();
+
+		String reference = jsonObject.getAsJsonObject("Individual").get("Reference").toString();
+		jsonObject = jsonObject.getAsJsonObject("Individual").getAsJsonObject("Global").getAsJsonObject("Bank").getAsJsonArray("Providers").get(0).getAsJsonObject();
+		String provider = jsonObject.get("Provider").toString();
+
+		JsonArray jsonArray = jsonObject.getAsJsonArray("Accounts");
+		List<AccountDetails> accounts = new ArrayList<>();
+
+		for(int i = 0; i < jsonArray.size(); i++)
+		{
+			jsonObject = jsonArray.get(i).getAsJsonObject();
+			String accountName = jsonObject.get("AccountName").toString();
+			String accountHolder = jsonObject.get("AccountHolder").toString();
+			String accountType = jsonObject.get("AccountType").toString();
+			String activityAvailableFrom = jsonObject.get("ActivityAvailableFrom").toString();
+			String accountNumber = jsonObject.get("AccountNumber").toString();
+			String sortCode = jsonObject.get("SortCode").toString();
+			String balance = jsonObject.get("Balance").toString();
+			String balanceFormatted = jsonObject.get("BalanceFormatted").toString();
+			String currencyCode = jsonObject.get("CurrencyCode").toString();
+			String verifiedOn = jsonObject.get("VerifiedOn").toString();
+
+			JsonArray array = jsonObject.getAsJsonArray("Transactions");
+			List<Transaction> transactions = new ArrayList<>();
+
+			for (int j = 0; j < array.size(); j++)
+			{
+				JsonObject object = array.get(j).getAsJsonObject();
+				String date = object.get("Date").toString();
+				String description = object.get("Description").toString();
+				String amount = object.get("Amount").toString();
+				String type = object.get("Type").toString();
+				transactions.add(new Transaction(date, description, amount, type));
+			}
+
+			AccountDetails accountDetails = new AccountDetails(accountName, accountHolder, accountType, activityAvailableFrom, accountNumber, sortCode, balance, balanceFormatted, transactions, currencyCode, verifiedOn);
+			accounts.add(accountDetails);
+		}
+
+
+
+		return new IndividualDetailsModel(reference, provider, accounts);
 	}
 }
