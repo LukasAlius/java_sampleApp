@@ -1,6 +1,5 @@
 package demo;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -21,17 +20,13 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microsoft.aad.adal4j.AuthenticationContext;
 import com.microsoft.aad.adal4j.ClientCredential;
-
-import javax.swing.text.BadLocationException;
 
 @Controller
 public class HomeController {
@@ -79,18 +74,13 @@ public class HomeController {
 	@RequestMapping("/IndividualsSummary")
 	public ModelAndView individualsSummary() {
 		ModelAndView modelAndView = new ModelAndView("IndividualsSummary");
-
 		modelAndView.addObject("individualModel", populateIndividualsSummary(jsonIndividualsSummary));
-		modelAndView.addObject("setupdata", new SetupData());
 		return modelAndView;
 	}
 
-	@RequestMapping(value = "/IndividualDetails", method = RequestMethod.POST)
-	public ModelAndView individualDetails(@ModelAttribute(value = "setupdata")SetupData data) {
+	@RequestMapping("/IndividualDetails")
+	public ModelAndView individualDetails() {
 		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
-
-		data.getReference();
-
 		modelAndView.addObject("individualModel", populateIndividualDetails(jsonIndividualDetails));
 		return modelAndView;
 	}
@@ -177,6 +167,9 @@ public class HomeController {
 		return result.getToken();
 	}
 
+	/**
+	 *	Getting Json using authorization token
+	 */
 	private String getJson(CredentialsModel credentials, String urlString) throws Exception {
 		String authenticationToken = acquireOAuthAccessToken(credentials.getClientId(), credentials.getSecretKey(), credentials.getResourceId(), credentials.getAuthority());
 
@@ -185,24 +178,23 @@ public class HomeController {
 			URLConnection urlConnection = url.openConnection();
 			urlConnection.setRequestProperty("Authorization", String.format("Bearer %s", authenticationToken));
 
-			InputStream is = urlConnection.getInputStream();
-			InputStreamReader isr = new InputStreamReader(is);
+			InputStreamReader streamReader = new InputStreamReader(urlConnection.getInputStream());
 
 			int read;
 			char[] chars = new char[1024];
-			StringBuffer sb = new StringBuffer();
-			while ((read = isr.read(chars))>0)
+			StringBuffer stringBuffer = new StringBuffer();
+			while ((read = streamReader.read(chars)) > 0)
 			{
-				sb.append(chars, 0, read);
+				stringBuffer.append(chars, 0, read);
 			}
-			return sb.toString();
+			return stringBuffer.toString();
 		}	catch (Exception e) {
-			throw new RuntimeException("Unable to get the Json files");
+			throw new RuntimeException("Unable to get the Json string");
 		}
 	}
 
 	/**
-	* Parsing JSON file into a IndividualsSummary class using gson
+	* Parsing JSON string and populating a IndividualsSummary class using Gson
 	*/
 	private List<IndividualSummaryModel> populateIndividualsSummary(String json) {
 		JsonElement jsonElement = new JsonParser().parse(json);
@@ -227,6 +219,9 @@ public class HomeController {
 		return individuals;
 	}
 
+	/**
+	 * Parsing JSON string and populating a IndividualDetails class using Gson
+	 */
 	private IndividualDetailsModel populateIndividualDetails(String json) {
 		JsonElement jsonElement = new JsonParser().parse(json);
 		JsonObject jsonObject = jsonElement.getAsJsonObject();
@@ -237,7 +232,16 @@ public class HomeController {
 
 		JsonArray jsonArray = jsonObject.getAsJsonArray("Accounts");
 		List<AccountDetails> accounts = new ArrayList<>();
+		getAccounts(jsonArray, accounts);
 
+		return new IndividualDetailsModel(reference, provider, accounts);
+	}
+
+	/**
+	 * Populating a AccountDetails class using Gson
+	 */
+	private void getAccounts(JsonArray jsonArray, List<AccountDetails> accounts) {
+		JsonObject jsonObject;
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
@@ -268,9 +272,5 @@ public class HomeController {
 			AccountDetails accountDetails = new AccountDetails(accountName, accountHolder, accountType, activityAvailableFrom, accountNumber, sortCode, balance, balanceFormatted, transactions, currencyCode, verifiedOn);
 			accounts.add(accountDetails);
 		}
-
-
-
-		return new IndividualDetailsModel(reference, provider, accounts);
 	}
 }

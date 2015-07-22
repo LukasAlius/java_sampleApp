@@ -83,14 +83,14 @@
                     </tr>
                     </thead>
                     <tr th:each="individual : ${individualModel}">
-                        <form action="#" th:action="@{/IndividualDetails}" th:object="${setupdata}" method="post">
+                        <form action="#" th:action="@{/IndividualDetails}" method="post">
                             <td th:text="${individual.Reference}"></td>
                             <td th:text="${individual.EmailAddress}"></td>
                             <td th:text="${individual.Name}"></td>
                             <td th:text="${individual.Timestamp}"></td>
                             <td th:text="${individual.UserID}"></td>
                             <td>
-                                <button type="submit" class="btn" th:value="${individual.Reference}"><i class="fa fa-external-link"></i></button>
+                                <button type="submit" class="btn"><i class="fa fa-external-link"></i></button>
                             </td>
                         </form>
                     </tr>
