@@ -6,8 +6,13 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -78,7 +83,7 @@ public class HomeController {
 	}
 
 	@RequestMapping("/IndividualDetails")
-	public ModelAndView individualDetails() {
+	public ModelAndView individualDetails() throws ParseException {
 		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
 		modelAndView.addObject("individualModel", populateIndividualDetails(jsonIndividualDetails));
 		return modelAndView;
@@ -221,7 +226,7 @@ public class HomeController {
 	/**
 	 * Parsing JSON string and populating a IndividualDetails class using Gson
 	 */
-	private IndividualDetailsModel populateIndividualDetails(String json) {
+	private IndividualDetailsModel populateIndividualDetails(String json) throws ParseException {
 		JsonElement jsonElement = new JsonParser().parse(json);
 		JsonObject jsonObject = jsonElement.getAsJsonObject();
 
@@ -239,7 +244,7 @@ public class HomeController {
 	/**
 	 * Populating a AccountDetails class using Gson
 	 */
-	private void getAccounts(JsonArray jsonArray, List<AccountDetails> accounts) {
+	private void getAccounts(JsonArray jsonArray, List<AccountDetails> accounts) throws ParseException {
 		JsonObject jsonObject;
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
@@ -262,6 +267,8 @@ public class HomeController {
 			{
 				JsonObject object = array.get(j).getAsJsonObject();
 				String date = object.get("Date").getAsString();
+				date = (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH)).parse(date).toString();
+
 				String description = object.get("Description").getAsString();
 				String amount = object.get("Amount").getAsString();
 				String type = object.get("Type").getAsString();
