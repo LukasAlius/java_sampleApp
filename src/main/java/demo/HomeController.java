@@ -40,7 +40,7 @@ public class HomeController {
 
 	/**
 	 * The default index controller, creates a new model to pass to the view
-	 * @param model 
+	 * @param model
 	 * @return link to the Index view
 	 */
 	@RequestMapping("/")
@@ -69,7 +69,6 @@ public class HomeController {
 		modelAndView.addObject("widgetmodel", new WidgetModel(form.getFullCDNPath(), token));
 		return modelAndView;
 	}
-
 
 	@RequestMapping("/IndividualsSummary")
 	public ModelAndView individualsSummary() {
@@ -178,7 +177,7 @@ public class HomeController {
 			URLConnection urlConnection = url.openConnection();
 			urlConnection.setRequestProperty("Authorization", String.format("Bearer %s", authenticationToken));
 
-			InputStreamReader streamReader = new InputStreamReader(urlConnection.getInputStream());
+			InputStreamReader streamReader = new InputStreamReader(urlConnection.getInputStream(), "UTF-8");
 
 			int read;
 			char[] chars = new char[1024];
@@ -206,11 +205,11 @@ public class HomeController {
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
-			String reference = jsonObject.get("Reference").toString();
-			String timestamp = jsonObject.get("Timestamp").toString();
-			String name = jsonObject.get("Name").toString();
-			String emailAddress = jsonObject.get("EmailAddress").toString();
-			String userID = jsonObject.get("UserID").toString();
+			String reference = jsonObject.get("Reference").getAsString();
+			String timestamp = jsonObject.get("Timestamp").getAsString();
+			String name = jsonObject.get("Name").getAsString();
+			String emailAddress = jsonObject.get("EmailAddress").getAsString();
+			String userID = jsonObject.get("UserID").getAsString();
 
 			IndividualSummaryModel individual = new IndividualSummaryModel(reference, timestamp, name, emailAddress, userID);
 			individuals.add(individual);
@@ -226,9 +225,9 @@ public class HomeController {
 		JsonElement jsonElement = new JsonParser().parse(json);
 		JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-		String reference = jsonObject.getAsJsonObject("Individual").get("Reference").toString();
+		String reference = jsonObject.getAsJsonObject("Individual").get("Reference").getAsString();
 		jsonObject = jsonObject.getAsJsonObject("Individual").getAsJsonObject("Global").getAsJsonObject("Bank").getAsJsonArray("Providers").get(0).getAsJsonObject();
-		String provider = jsonObject.get("Provider").toString();
+		String provider = jsonObject.get("Provider").getAsString();
 
 		JsonArray jsonArray = jsonObject.getAsJsonArray("Accounts");
 		List<AccountDetails> accounts = new ArrayList<>();
@@ -245,16 +244,16 @@ public class HomeController {
 		for(int i = 0; i < jsonArray.size(); i++)
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
-			String accountName = jsonObject.get("AccountName").toString();
-			String accountHolder = jsonObject.get("AccountHolder").toString();
-			String accountType = jsonObject.get("AccountType").toString();
-			String activityAvailableFrom = jsonObject.get("ActivityAvailableFrom").toString();
-			String accountNumber = jsonObject.get("AccountNumber").toString();
-			String sortCode = jsonObject.get("SortCode").toString();
-			String balance = jsonObject.get("Balance").toString();
-			String balanceFormatted = jsonObject.get("BalanceFormatted").toString();
-			String currencyCode = jsonObject.get("CurrencyCode").toString();
-			String verifiedOn = jsonObject.get("VerifiedOn").toString();
+			String accountName = jsonObject.get("AccountName").getAsString();
+			String accountHolder = jsonObject.get("AccountHolder").getAsString();
+			String accountType = jsonObject.get("AccountType").getAsString();
+			String activityAvailableFrom = jsonObject.get("ActivityAvailableFrom").getAsString();
+			String accountNumber = jsonObject.get("AccountNumber").getAsString();
+			String sortCode = jsonObject.get("SortCode").getAsString();
+			String balance = jsonObject.get("Balance").getAsString();
+			String balanceFormatted = jsonObject.get("BalanceFormatted").getAsString();
+			String currencyCode = jsonObject.get("CurrencyCode").getAsString();
+			String verifiedOn = jsonObject.get("VerifiedOn").getAsString();
 
 			JsonArray array = jsonObject.getAsJsonArray("Transactions");
 			List<Transaction> transactions = new ArrayList<>();
@@ -262,10 +261,10 @@ public class HomeController {
 			for (int j = 0; j < array.size(); j++)
 			{
 				JsonObject object = array.get(j).getAsJsonObject();
-				String date = object.get("Date").toString();
-				String description = object.get("Description").toString();
-				String amount = object.get("Amount").toString();
-				String type = object.get("Type").toString();
+				String date = object.get("Date").getAsString();
+				String description = object.get("Description").getAsString();
+				String amount = object.get("Amount").getAsString();
+				String type = object.get("Type").getAsString();
 				transactions.add(new Transaction(date, description, amount, type));
 			}
 
