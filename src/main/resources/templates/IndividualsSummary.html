@@ -90,7 +90,7 @@
                             <td th:text="${individual.Timestamp}"></td>
                             <td th:text="${individual.UserID}"></td>
                             <td>
-                                <button type="submit" class="btn"><i class="fa fa-external-link"></i></button>
+                                <button type="submit" name="reference" class="btn" th:value="${individual.Reference}"><i class="fa fa-external-link"></i></button>
                             </td>
                         </form>
                     </tr>

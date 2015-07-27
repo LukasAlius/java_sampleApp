@@ -6,13 +6,11 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -38,10 +36,8 @@ public class HomeController {
 
 	private String summaryURL = "https://api-beta.direct.id:444/v1/individuals";
 	private String detailsURL = "https://api-beta.direct.id:444/v1/individual/";
-	private String jsonIndividualDetails;
-	private String jsonIndividualsSummary;
 
-	private String reference = "5388f1dd436e46698007b79650679023";
+	private String authenticationToken;
 
 	/**
 	 * The default index controller, creates a new model to pass to the view
@@ -65,10 +61,8 @@ public class HomeController {
 	public ModelAndView connect(CredentialsModel form) throws Exception {
 		trimFormDetails(form);
 
-		jsonIndividualsSummary = getJson(form, summaryURL);
-		jsonIndividualDetails = getJson(form, detailsURL + reference);
-
-		String token = acquireUserSessionToken(new DefaultHttpClient(), form.getApi(), acquireOAuthAccessToken(form.getClientId(), form.getSecretKey(), form.getResourceId(), form.getAuthority()));
+		authenticationToken = acquireOAuthAccessToken(form.getClientId(), form.getSecretKey(), form.getResourceId(), form.getAuthority());
+		String token = acquireUserSessionToken(new DefaultHttpClient(), form.getApi(), authenticationToken);
 
 		ModelAndView modelAndView = new ModelAndView("Widget");
 		modelAndView.addObject("widgetmodel", new WidgetModel(form.getFullCDNPath(), token));
@@ -76,16 +70,16 @@ public class HomeController {
 	}
 
 	@RequestMapping("/IndividualsSummary")
-	public ModelAndView individualsSummary() {
+	public ModelAndView individualsSummary() throws Exception {
 		ModelAndView modelAndView = new ModelAndView("IndividualsSummary");
-		modelAndView.addObject("individualModel", populateIndividualsSummary(jsonIndividualsSummary));
+		modelAndView.addObject("individualModel", populateIndividualsSummary(getJson(summaryURL)));
 		return modelAndView;
 	}
 
 	@RequestMapping("/IndividualDetails")
-	public ModelAndView individualDetails() throws ParseException {
+	public ModelAndView individualDetails(String reference) throws Exception {
 		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
-		modelAndView.addObject("individualModel", populateIndividualDetails(jsonIndividualDetails));
+		modelAndView.addObject("individualModel", populateIndividualDetails(getJson(detailsURL+reference)));
 		return modelAndView;
 	}
 
@@ -140,7 +134,8 @@ public class HomeController {
 	}
 
 	/**
-	 * Queries <paramref name="apiEndpoint"/> with an http request authorized with <paramref name="authenticationToken"/>.
+	 * Queries <paramref name="apiEndpoint"/> with an http request
+	 * authorized with <paramref name="authenticationToken"/>.
 	 * @param client
 	 * @param api
 	 * @param acquiredToken
@@ -174,8 +169,7 @@ public class HomeController {
 	/**
 	 *	Getting Json using authorization token
 	 */
-	private String getJson(CredentialsModel credentials, String urlString) throws Exception {
-		String authenticationToken = acquireOAuthAccessToken(credentials.getClientId(), credentials.getSecretKey(), credentials.getResourceId(), credentials.getAuthority());
+	private String getJson(String urlString) throws Exception {
 
 		try {
 			URL url = new URL(urlString);
@@ -200,7 +194,7 @@ public class HomeController {
 	/**
 	* Parsing JSON string and populating a IndividualsSummary class using Gson
 	*/
-	private List<IndividualSummaryModel> populateIndividualsSummary(String json) {
+	private List<IndividualSummaryModel> populateIndividualsSummary(String json) throws ParseException {
 		JsonElement jsonElement = new JsonParser().parse(json);
 		JsonObject jsonObject = jsonElement.getAsJsonObject();
 		JsonArray jsonArray = jsonObject.getAsJsonArray("Individuals");
@@ -211,7 +205,7 @@ public class HomeController {
 		{
 			jsonObject = jsonArray.get(i).getAsJsonObject();
 			String reference = jsonObject.get("Reference").getAsString();
-			String timestamp = jsonObject.get("Timestamp").getAsString();
+			String timestamp = getDate(jsonObject.get("Timestamp").getAsString());
 			String name = jsonObject.get("Name").getAsString();
 			String emailAddress = jsonObject.get("EmailAddress").getAsString();
 			String userID = jsonObject.get("UserID").getAsString();
@@ -252,13 +246,13 @@ public class HomeController {
 			String accountName = jsonObject.get("AccountName").getAsString();
 			String accountHolder = jsonObject.get("AccountHolder").getAsString();
 			String accountType = jsonObject.get("AccountType").getAsString();
-			String activityAvailableFrom = jsonObject.get("ActivityAvailableFrom").getAsString();
+			String activityAvailableFrom = getDate(jsonObject.get("ActivityAvailableFrom").getAsString());
 			String accountNumber = jsonObject.get("AccountNumber").getAsString();
 			String sortCode = jsonObject.get("SortCode").getAsString();
 			String balance = jsonObject.get("Balance").getAsString();
 			String balanceFormatted = jsonObject.get("BalanceFormatted").getAsString();
 			String currencyCode = jsonObject.get("CurrencyCode").getAsString();
-			String verifiedOn = jsonObject.get("VerifiedOn").getAsString();
+			String verifiedOn = getDate(jsonObject.get("VerifiedOn").getAsString());
 
 			JsonArray array = jsonObject.getAsJsonArray("Transactions");
 			List<Transaction> transactions = new ArrayList<>();
@@ -266,8 +260,7 @@ public class HomeController {
 			for (int j = 0; j < array.size(); j++)
 			{
 				JsonObject object = array.get(j).getAsJsonObject();
-				String date = object.get("Date").getAsString();
-				date = (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX", Locale.ENGLISH)).parse(date).toString();
+				String date = getDate(object.get("Date").getAsString());
 
 				String description = object.get("Description").getAsString();
 				String amount = object.get("Amount").getAsString();
@@ -278,5 +271,12 @@ public class HomeController {
 			AccountDetails accountDetails = new AccountDetails(accountName, accountHolder, accountType, activityAvailableFrom, accountNumber, sortCode, balance, balanceFormatted, transactions, currencyCode, verifiedOn);
 			accounts.add(accountDetails);
 		}
+	}
+
+	private String getDate(String rawDate) throws ParseException {
+		Date date = (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")).parse(rawDate);
+
+
+		return (new SimpleDateFormat("dd/MM/yyyy HH:mm:ss")).format(date);
 	}
 }
