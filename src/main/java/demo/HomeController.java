@@ -8,9 +8,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,10 +19,11 @@ import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.codehaus.jackson.map.JsonMappingException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.ModelAndView;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,17 +78,22 @@ public class HomeController {
 	@RequestMapping("/IndividualDetails")
 	public ModelAndView individualDetails(String reference) throws Exception {
 		ModelAndView modelAndView = new ModelAndView("IndividualDetails");
-		modelAndView.addObject("individualModel", populateIndividualDetails(getJson(detailsURL+reference)));
+		modelAndView.addObject("individualModel", populateIndividualDetails(getJson(detailsURL + reference)));
 		return modelAndView;
+	}
+
+	@RequestMapping(value = "/WebHook", method = RequestMethod.POST)
+	public ResponseEntity getUserId(@RequestParam("didref") String userId) {
+		return new ResponseEntity(HttpStatus.OK);
 	}
 
 	private void trimFormDetails(CredentialsModel form) {
 		form.setApi(form.getApi().trim());
 		form.setAuthority(form.getAuthority().trim());
 		form.setClientId(form.getClientId().trim());
-		form.setFullCDNPath(form.getFullCDNPath().trim());
+		form.setFullCDNPath(trimSlash(form.getFullCDNPath().trim()));
 		form.setResourceId(form.getResourceId().trim());
-		form.setSecretKey(form.getSecretKey().trim());	
+		form.setSecretKey(form.getSecretKey().trim());
 	}
 
 	/**
@@ -275,8 +279,13 @@ public class HomeController {
 
 	private String getDate(String rawDate) throws ParseException {
 		Date date = (new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")).parse(rawDate);
-
-
 		return (new SimpleDateFormat("dd/MM/yyyy HH:mm:ss")).format(date);
+	}
+
+	private String trimSlash(String url){
+		if(url.substring(url.length()-1, url.length()).equals("/")) {
+			return url.substring(0, url.length()-1);
+		}
+		return url;
 	}
 }
